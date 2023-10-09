@@ -1,3 +1,12 @@
+/*
+LexItem class contains token, string for lexeme, and line number
+as data members
+*/
+
+
+
+
+
 //Definition of all the possible token types
 enum Token {
 // keywords OR RESERVED WORDS
@@ -19,27 +28,31 @@ DONE,
 };
 
 class LexItem { //Class definition of LexItem
-Token token;
-string lexeme;
-int lnum;
+    Token token;
+    string lexeme;
+    int lnum;
+
 public:
-LexItem() {
-token = ERR;
-lnum = -1;
-}
-LexItem(Token token, string lexeme, int line) {
-this->token = token;
-this->lexeme = lexeme;
-this->lnum = line;
-}
+    LexItem() {
+    token = ERR;
+    lnum = -1;
+    }
+    LexItem(Token token, string lexeme, int line) {
+    this->token = token;
+    this->lexeme = lexeme;
+    this->lnum = line;
+    }
+
 bool operator==(const Token token) const { return this->token ==
 token; }
 bool operator!=(const Token token) const { return this->token !=
 token; }
+
 Token GetToken() const { return token; }
 string GetLexeme() const { return lexeme; }
 int GetLinenum() const { return lnum; }
 };
+
 bool operator==(const Token token) const {
 return this->token == token; }
 bool operator!=(const Token token) const {
