@@ -12,116 +12,9 @@
 #include <vector>
 #include <string>
 #include <cctype>
+#include <sstream>
 using namespace std;
 using std::map;
-
-/*
-functions to be implemented - - - - - - - - - - - -
-ostream& operator<< (ostream& out, constLexItem& tok);
-LexItem id_or_kw(const string& lexeme, int linenum);
-Lexitem getNextToken(istream& in, int& linenum);
-*/
-
-//getNextToken function will need to look at the next character from input
-//use peek() function to examine next character, only read if it belongs to token
-LexItem getNextToken(istream& in, int& linenumber){
-
-enum tokenState{START,INID,ININT,INSTRING,INREAL,COMMENT,PLUS,DIV,ERR,DONE} lexstate = START;
-    
-string lexeme;
-char ch;
-LexItem token;
-//each state has different rules
-while(in.get(ch)){
-    switch (lexstate){
-        //Start state logic branches
-        case START:
-            if (isalpha(ch)){
-                lexstate = INID;
-                lexeme += ch;
-            }
-            else if (isdigit(ch)){
-                lexstate = ININT;
-                lexeme += ch;
-            }
-            else if (ch == '"'){
-                lexstate = INSTRING;
-                lexeme += ch;
-            }
-            else if (ch == '/'){
-                char ch_next = in.peek();
-                if(ch_next=='/'){
-                    lexstate = COMMENT;
-                }
-                else{
-                    lexstate = ERR;
-                    lexeme = "/";
-                    token = LexItem(Token::ERR, lexeme, linenumber);
-            }
-    }
-            else if (ch='\n'){
-                linenumber++;
-}
-            else if(in.eof()){
-                lexstate = DONE;
-                token = LexItem(Token::DONE,"",linenumber);
-
-            }
-            break;
-
-            //Identifier logic ...
-            case INID:
-                if (isalnum(ch) || ch=='_'){
-                    lexeme += ch;
-                }
-                else {
-                    in.putback(ch);
-                    lexstate = DONE;
-                }
-                break;
-
-            //Int logic
-            case ININT:
-                if(isdigit(ch)){
-                    lexeme += ch;
-                }    
-                else if(ch=='.'){
-                    lexeme += ch;
-                    lexstate = INREAL;
-                }
-                else {
-                    in.putback(ch);
-                    lexstate = DONE;
-                    //determine token state on lexeme, set token variable
-                }
-            
-            //String state logic
-            case INSTRING:
-                lexeme += ch;
-                if(ch == '"'){
-                    lexstate = DONE;
-                    token = LexItem(Token::STRING,lexeme,linenumber);
-                }
-                else if (ch == '\n'){
-                    lexstate = ERR;
-                }
-                break;
-
-
-
-            
-
-
-    
-
-
-}
-
-    
-}
-    return token;
-}
-
 std::map<string, Token> keywordMap = {
         {"PROGRAM", PROGRAM},
 		{"WRITELN", WRITELN},
@@ -131,13 +24,14 @@ std::map<string, Token> keywordMap = {
 		{ "IDENT", IDENT },
 		{"VAR", VAR},
 		{"BEGIN", BEGIN},
-		{"END", END},
+		{"END", IDENT},
 		{"INTEGER", INTEGER},
 		{"REAL", REAL},
 		{"STRING", STRING},
-		{"BOOLEAN", BOOLEAN},
-		{"TRUE", TRUE},
-		{"FALSE", FALSE},
+		
+        {"BOOLEAN", BOOLEAN},
+		{"TRUE", BOOLEAN},
+		{"FALSE", BOOLEAN},
 		
 		{ "ICONST", ICONST },
 		{ "RCONST", RCONST },
@@ -169,7 +63,228 @@ std::map<string, Token> keywordMap = {
 
 		{ "DONE", DONE },
 
+        {"program", PROGRAM},
+		{"writeln", WRITELN},
+		{"write", WRITE },
+		{ "if", IF },
+		{ "else", ELSE },	
+		{ "ident", IDENT },
+		{"var", VAR},
+		{"begin", BEGIN},
+		{"end", IDENT},
+		{"integer", INTEGER},
+		{"real", REAL},
+		{"string", STRING},
+		{"boolean", BOOLEAN},
+		{"true", BOOLEAN},
+		{"false", BOOLEAN},
+		
+		{ "iconst", ICONST },
+		{ "rconst", RCONST },
+		{ "sconst", SCONST  },
+		{ "bconst", BCONST },
+			
+		{ "plus", PLUS },
+		{ "minus" , MINUS },
+		{ "mult" , MULT  },
+		{ "div" , DIV },
+		{ "idiv" , IDIV },
+		{ "assop", ASSOP },
+		{ "eq", EQ  },
+		{ "gthan" , GTHAN  },
+		{ "lthan", LTHAN },
+		{ "mod", MOD},
+		{ "and", AND},
+		{ "or", OR},
+		{ "not", NOT},
+				            
+		{ "comma", COMMA  },
+		{ "lparen", LPAREN },
+		{ "rparen", RPAREN },
+			
+		{ "semicol", SEMICOL  },
+		{ "dot", DOT },
+		
+		{ "err",ERR  },
+
+		{ "done", DONE },
+
 };
+/*
+functions to be implemented - - - - - - - - - - - -
+ostream& operator<< (ostream& out, constLexItem& tok);
+LexItem id_or_kw(const string& lexeme, int linenum);
+Lexitem getNextToken(istream& in, int& linenum);
+*/
+
+//getNextToken function will need to look at the next character from input
+//use peek() function to examine next character, only read if it belongs to token
+LexItem getNextToken(istream& in, int& linenumber) {
+    enum statetype {
+        START, SEENINT, SEENID, SEENREAL, SEENCOMM, SEENSTR
+    };
+
+    char c;
+    string lexeme = "";
+    statetype state = START;
+
+    while (in.get(c)) {
+        switch (state) {
+            case START:
+                //cout << "1";
+                if (c == '\n' || c=='\r') {
+                    linenumber++;
+                }
+                if (isspace(c)) {
+                    continue;
+                }
+                if (c == '+') {
+                    return LexItem(PLUS, "PLUS", linenumber);
+                }
+                if (c == '-') {
+                    return LexItem(MINUS, "MINUS", linenumber);
+                }
+                if (c == '*') {
+                    return LexItem(MULT, "MULT", linenumber);
+                }
+                if (c == '/') {
+                    return LexItem(DIV, "DIV", linenumber);
+                }
+                if (c == ':') {
+                    c = in.peek();
+                    if (c == '=') {
+                        in.get(c);
+                        return LexItem(ASSOP, "ASSOP", linenumber);
+                    } else {
+                        return LexItem(COLON, "COLON", linenumber);
+                    }
+                }
+                if (c == '=') {
+                    return LexItem(EQ, "EQ", linenumber);
+                }
+                if (c == '>') {
+                    return LexItem(GTHAN, "GTHAN", linenumber);
+                }
+                if (c == '<') {
+                    return LexItem(LTHAN, "LTHAN", linenumber);
+                }
+                if (c == '%') {
+                    return LexItem(MOD, "MOD", linenumber);
+                }
+                if (c == ',') {
+                    return LexItem(COMMA, "COMMA", linenumber);
+                }
+                if (c == '(') {
+                    return LexItem(LPAREN, "LPAREN", linenumber);
+                }
+                if (c == ')') {
+                    return LexItem(RPAREN, "RPAREN", linenumber);
+                }
+                if (c == '.') {
+                    return LexItem(DOT, "DOT", linenumber);
+                }
+                if (c == ';') {
+                    return LexItem(SEMICOL, "SEMICOL", linenumber);
+                }
+                if (c == '{') {
+                    state = SEENCOMM;
+                    continue;
+                }
+                if (isdigit(c)) {
+                    state = SEENINT;
+                    lexeme += c;
+                    continue;
+                }
+                if (isalpha(c)) {
+                    state = SEENID;
+                    lexeme += c;
+                    continue;
+                }
+                if (c == '\'') {
+                    state = SEENSTR;
+                    continue;
+                } else {
+                    lexeme += c;
+                    return LexItem(ERR, lexeme, linenumber);
+                }
+
+            case SEENID:
+                if (isalnum(c) || c == '_' || c == '$') {
+                    lexeme += c;
+                    continue;
+                } else {
+                    in.putback(c);
+                    string lex = lexeme;
+                    lexeme = "";
+                    state = START;
+                    return id_or_kw(lex, linenumber);
+                }
+
+            case SEENINT:
+                if (isdigit(c)) {
+                    lexeme += c;
+                    continue;
+                } else {
+                    if (c == '.') {
+                        state = SEENREAL;
+                        lexeme += c;
+                        continue;
+                    } else {
+                        in.putback(c);
+                        string lex = lexeme;
+                        lexeme = "";
+                        state = START;
+                        return LexItem(ICONST, lex, linenumber);
+                    }
+                }
+
+            case SEENREAL:
+                if (isdigit(c)) {
+                    lexeme += c;
+                    continue;
+                } else {
+                    if (c == '.') {
+                        lexeme += c;
+                        return { ERR, lexeme, linenumber };
+                    } else {
+                        state = START;
+                        string lex = lexeme;
+                        lexeme = "";
+                        in.putback(c);
+                        return LexItem(RCONST, lex, linenumber);
+                    }
+                }
+
+            case SEENCOMM:
+                if (c == '}') {
+                    state = START;
+                    continue;
+                }
+                if (c == '\n') {
+                    linenumber++;
+                    continue;
+                } else {
+                    continue;
+                }
+
+            case SEENSTR:
+                if (c != '\'') {
+                    lexeme += c;
+                    continue;
+                } else {
+                    string lex = lexeme;
+                    lexeme = "";
+                    state = START;
+                    return LexItem(SCONST, lex, linenumber);
+                }
+        }
+    }
+
+    return LexItem(DONE, "", linenumber);
+}
+
+
+
 
 LexItem id_or_kw(const std::string& lexeme, int linenum) {
     std::string trimmedLexeme = lexeme;
@@ -183,14 +298,164 @@ LexItem id_or_kw(const std::string& lexeme, int linenum) {
     // Check if the lexeme (after trimming whitespace) is in the keyword map
     auto it = keywordMap.find(trimmedLexeme.substr(pos));
     if (it != keywordMap.end()) {
-        return LexItem(it->second, trimmedLexeme.substr(pos), linenum);
+        return LexItem(it->second, trimmedLexeme.substr(pos), linenum); //|| LexItem(it->second, trimmedLexeme.substr(pos), linenum);
     } else {
         // If not found in the map, check if it's "END"
-        if (trimmedLexeme.substr(pos) == "end") {
+        if (trimmedLexeme.substr(pos) == "END" || trimmedLexeme.substr(pos) == "end" ) {
             return LexItem(Token::END, trimmedLexeme.substr(pos), linenum);
         } else {
             // If it's not "END" and not found in the map, it's an IDENT
             return LexItem(Token::IDENT, trimmedLexeme.substr(pos), linenum);
-        }
+       }
     }
 }
+
+
+std::ostream& operator<<(std::ostream& out, const LexItem& item) {
+
+//Know there is a more efficient way to do this, but whatever
+    switch (item.GetToken()) {
+
+        //Keyword Tokens........................
+        case Token::IF: 
+            out << "IF: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::ELSE: 
+            out << "ELSE: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::WRITELN: 
+            out << "WRITELN: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::WRITE: 
+            out << "WRITE: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::INTEGER: 
+            out << "INTEGER: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::REAL: 
+            out << "REAL: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::BOOLEAN: 
+            out << "BOOLEAN: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::STRING: 
+            out << "STRING: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::BEGIN: 
+            out << "BEGIN: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::END: 
+            out << "END: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::VAR: 
+            out << "VAR: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::THEN: 
+            out << "THEN: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::PROGRAM: 
+            out << "PROGRAM: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        
+
+        //Identifier Tokens.................
+        case Token::IDENT:
+            out << "IDENT: \"" << item.GetLexeme() << "\" at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::TRUE:
+            out << "TRUE: \"" << item.GetLexeme() << "\" at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::FALSE:
+            out << "FALSE: \"" << item.GetLexeme() << "\" at line no. " << item.GetLinenum() << endl;
+            break;
+        
+
+        //Constants Tokens...................
+        case Token::ICONST:
+            out << "ICONST: (" << item.GetLexeme() << ") at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::RCONST:
+            out << "RCONST: (" << item.GetLexeme() << ") at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::BCONST:
+            out << "BCONST: (" << item.GetLexeme() << ") at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::SCONST:
+            out << "SCONST: '" << item.GetLexeme() << "' at line no. " << item.GetLinenum() << endl;
+            break;
+
+        //Operator Tokens.....................
+        case Token::PLUS: 
+            out << "PLUS: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::MINUS: 
+            out << "MINUS: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::MULT: 
+            out << "MULT: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::DIV: 
+            out << "DIV: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::IDIV: 
+            out << "IDIV: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::MOD: 
+            out << "MOD: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::ASSOP: 
+            out << "ASSOP: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::EQ: 
+            out << "EQ: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::GTHAN: 
+            out << "GTHAN: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::LTHAN: 
+            out << "LTHAN: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::AND: 
+            out << "AND: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::OR: 
+            out << "OR: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::NOT: 
+            out << "NOT: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        
+        //Dilimiter Tokens
+        case Token::COMMA: 
+            out << "COMMA: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::SEMICOL: 
+            out << "SEMICOL: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::LPAREN: 
+            out << "LPAREN: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::RPAREN: 
+            out << "RPAREN: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::DOT: 
+            out << "DOT: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        case Token::COLON: 
+            out << "THEN: [" << item.GetLexeme() << "] at line no. " << item.GetLinenum() << endl;
+            break;
+        //Error Token........................
+        case Token::ERR:
+            out << "Error: {" << item.GetLexeme() << "} at line no. " << item.GetLinenum() << endl;
+            break;
+
+        //EOF Token, not implemented yet
+        case Token::DONE:
+            out << "DONE: {" << item.GetLexeme() << "} at line no. " << item.GetLinenum() << endl;
+            break;
+    }
+    return out;
+}
+
+
+
