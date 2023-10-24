@@ -3,7 +3,7 @@ program prog1;
 	var
 	integer x1, y_1, z-, w$234;	
 	string str := 'Welcome';
-	real z = 0.0, x y;
+	real z = 0.0, x y;	
 	
 begin
 	r = 50;

@@ -1,170 +1,180 @@
-#include "lex.cpp"
-#include <fstream>
-#include <string>
 #include <iostream>
-#include <map>
-#include <cctype>
-#include <algorithm>
+#include <fstream>
+#include <vector>
 #include <set>
+#include <map>
+#include <algorithm>
+#include "lex.cpp"
+// Define the LexItem structure and the getNextToken function here
+// ...
 
-using namespace std;
-using std::map;
-
-//main function takes command line args
-/*
-(flags)
--v (every token is printed out, followed by its lexeme)
--nconsts (prints all unique numeric constants)
--sconsts (prints all unique string constants in alphabetical order)
--bconst (prints all boolean constants in order)
--ident (prints all unique identifiers in aplhpabetical order)
-..............
-filename arg
-*/
 int main(int argc, char* argv[]) {
     bool printTokens = false;
-    bool printIdentifiers = false;
-    bool printNumericConstants = false;
-    bool printStringConstants = false;
-    bool printBooleanConstants = false;
-    string filename;
-    bool multipleFilenames = false;
+    bool printNConst = false;
+    bool printSConst = false;
+    bool printBConst = false;
+    bool printIdent = false;
+    std::string filename;
 
-    // Process command-line flags
-    for (int i = 1; i < argc; i++) {
-        string arg = argv[i];
-        if (arg == "-v") {
-            printTokens = true;
-        } else if (arg == "-ident") {
-            printIdentifiers = true;
-        } else if (arg == "-nconst") {
-            printNumericConstants = true;
-        } else if (arg == "-sconst") {
-            printStringConstants = true;
-        } else if (arg == "-bconst") {
-            printBooleanConstants = true;
-        } else if (arg[0] == '-') {
-            cout << "UNRECOGNIZED FLAG " << arg << endl;
-            return 1;
-        } else {
-            if (multipleFilenames) {
-                cout << "ONLY ONE FILE NAME IS ALLOWED." << endl;
+    bool validArgumentFound = false; // Flag to track if a valid argument was found
+    bool printSummary = true;      // Flag to print the summary information
+
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg.size() > 1 && arg[0] == '-') {
+            // Argument starts with '-', so it's a flag
+            if (arg == "-v") {
+                printTokens = true;
+                validArgumentFound = true;
+                printSummary = false;
+            } else if (arg == "-nconst") {
+                printNConst = true;
+                validArgumentFound = true;
+                printSummary = false; // Don't print summary if flags are present
+            } else if (arg == "-sconst") {
+                printSConst = true;
+                validArgumentFound = true;
+                printSummary = false;
+            } else if (arg == "-bconst") {
+                printBConst = true;
+                validArgumentFound = true;
+                printSummary = false;
+            } else if (arg == "-ident") {
+                printIdent = true;
+                validArgumentFound = true;
+                printSummary = false;
+            } else {
+                std::cout << "UNRECOGNIZED FLAG " << "{"<< arg << "}" << std::endl;
                 return 1;
             }
-            filename = arg;
-            multipleFilenames = true;
-        }
-    }
-
-    if (!multipleFilenames) {
-        cout << "NO SPECIFIED INPUT FILE." << endl;
-        return 1;
-    }
-
-    ifstream inputFile(filename);
-
-    if (!inputFile.is_open()) {
-        cout << "CANNOT OPEN THE FILE " << filename << endl;
-        return 1;
-    }
-
-
-    string lexeme = "";
-    int lineCount = 0;
-    int totalTokens = 0;
-    int identifierCount = 0;
-    int numericConstantCount = 0;
-    int booleanConstantCount = 0;
-    int stringConstantCount = 0;
-    map<string, bool> seenIdentifiers;
-    set<string> uniqueNumericConstants;
-    set<string> uniqueStringConstants;
-    set<string> uniqueBooleanConstants;
-
-    if (printTokens) {
-        cout << "Tokens:" << endl;
-    }
-
-    while ((getNextToken(inputFile,lineCount)!= ERR) || (getNextToken(inputFile,lineCount)!= DONE )) {
-        LexItem token = getNextToken(inputFile, lineCount);
-        if (token.GetToken() == DONE) {
-            //lexstate = DONE;
-            return 1;
-        } else if (token.GetToken() == ERR) {
-            cout << "Error in line " << token.GetLinenum() << ": Unrecognized Lexeme " << token.GetLexeme() << endl;
-            return 1;
         } else {
-            totalTokens++;
-            if (printTokens) {
-                if (token.GetToken() == IDENT || token.GetToken() == ICONST || token.GetToken() == RCONST || token.GetToken() == SCONST || token.GetToken() == BCONST) {
-                    cout << token.GetToken() << ": \"" << token.GetLexeme() << "\"" << endl;
-                } else {
-                    cout << token.GetToken() << endl;
-                }
-            }
-            if (token.GetToken() == IDENT) {
-                identifierCount++;
-                seenIdentifiers[token.GetLexeme()] = true;
-            } else if (token.GetToken() == ICONST || token.GetToken() == RCONST) {
-                numericConstantCount++;
-                uniqueNumericConstants.insert(token.GetLexeme());
-            } else if (token.GetToken() == SCONST) {
-                stringConstantCount++;
-                uniqueStringConstants.insert(token.GetLexeme());
-            } else if (token.GetToken() == BCONST) {
-                booleanConstantCount++;
-                uniqueBooleanConstants.insert(token.GetLexeme());
+            // Argument doesn't start with '-', so it's a filename
+            if (filename.empty()) {
+                filename = arg;
+                validArgumentFound = true;
+            } else {
+                std::cout << "ONLY ONE FILE NAME IS ALLOWED." << std::endl;
+                return 1;
             }
         }
     }
 
-    cout << "Lines: " << lineCount << endl;
-    cout << "Total Tokens: " << totalTokens << endl;
-    cout << "Identifiers: " << identifierCount << endl;
-    cout << "Numbers: " << numericConstantCount << endl;
-    cout << "Booleans: " << booleanConstantCount << endl;
-    cout << "Strings: " << stringConstantCount << endl;
+    if (!validArgumentFound) {
+        std::cout << "No valid argument found." << std::endl;
+        return 1;
+    }
 
-    if (identifierCount > 0 && printIdentifiers) {
-        cout << "IDENTIFIERS: ";
-        vector<string> identifiers;
-        for (const auto& id : seenIdentifiers) {
-            identifiers.push_back(id.first);
+    if (filename.empty()) {
+        std::cout << "A filename is required." << std::endl;
+        return 1;
+    }
+
+    // Open the input file
+    std::ifstream inputFile(filename);
+    if (!inputFile.is_open()) {
+        std::cout << "CANNOT OPEN THE FILE " << filename << std::endl;
+        return 1;
+    }
+
+    // Initialize data structures to collect tokens
+    std::vector<LexItem> tokens;
+    std::set<std::string> uniqueStrings;
+    std::set<double> uniqueNumbers;
+    std::set<std::string> uniqueBooleans;
+    std::set<std::string> uniqueIdentifiers;
+
+    int lineCount = 0; // Initialize the line number
+    LexItem token;
+
+    // Process tokens and collect data
+    while ((token = getNextToken(inputFile, lineCount)).GetToken() != Token::DONE) {
+        if (token.GetToken() == Token::ERR) {
+            break;
         }
-        sort(identifiers.begin(), identifiers.end());
-        for (size_t i = 0; i < identifiers.size(); i++) {
-            if (i > 0) {
-                cout << ", ";
+
+        if (printTokens) {
+            if (token.GetToken() == Token::IDENT){
+               
+                std::cout << "IDENT: \"" << token.GetLexeme() << "\"" <<endl;
             }
-            cout << identifiers[i];
+            else{
+                std::cout << token.GetLexeme() <<endl;
+            }
         }
-        cout << endl;
+
+        if (token.GetToken() == Token::IDENT) {
+            uniqueIdentifiers.insert(token.GetLexeme());
+        } else if (token.GetToken() == Token::ICONST || token.GetToken() == Token::RCONST) {
+            uniqueNumbers.insert(std::stod(token.GetLexeme()));
+        } else if (token.GetToken() == Token::SCONST) {
+            uniqueStrings.insert(token.GetLexeme());
+        } else if (token.GetToken() == Token::BOOLEAN) {
+            uniqueBooleans.insert(token.GetLexeme());
+        }
+
+        tokens.push_back(token);
     }
 
-    if (numericConstantCount > 0 && printNumericConstants) {
-        cout << "NUMBERS:" << endl;
-        for (const string& num : uniqueNumericConstants) {
-            cout << num << endl;
-        }
-    }
-
-    if (booleanConstantCount > 0 && printBooleanConstants) {
-        cout << "BOOLEANS:" << endl;
-        for (const string& boolean : uniqueBooleanConstants) {
-            cout << boolean << endl;
-        }
-    }
-
-    if (stringConstantCount > 0 && printStringConstants) {
-        cout << "STRINGS:" << endl;
-        for (const string& str : uniqueStringConstants) {
-            cout << "\"" << str << "\"" << endl;
-        }
-    }
-
-    if (totalTokens == 0) {
+    if (tokens.empty()) {
         cout << "Empty File." << endl;
+        return 0;
     }
+
+    // Print summary information if the flag is set
+    if (printSummary) {
+        std::cout << endl << "Lines: " << lineCount << std::endl;
+        std::cout << "Total Tokens: " << tokens.size() << std::endl;
+        std::cout << "Identifiers: " << uniqueIdentifiers.size() << std::endl;
+        std::cout << "Numbers: " << uniqueNumbers.size() << std::endl;
+
+        std::cout << "Booleans: ";
+        if (uniqueBooleans.size() > 0) {
+            cout << uniqueBooleans.size() - 1 << std::endl;
+        } else {
+            cout << 0 << endl;
+        }
+
+        std::cout << "Strings: " << uniqueStrings.size() << std::endl;
+    }
+
+    // Process and print additional data based on flags
+    if (printIdent) {
+    std::cout << "IDENTIFIERS: ";
+    auto it = uniqueIdentifiers.begin();
+    auto last = uniqueIdentifiers.end();
+    for (; it != last; ++it) {
+        std::cout << *it;
+        if (std::next(it) != last) {
+            std::cout << ", ";
+        }
+    }
+    std::cout << std::endl;
+}
+
+    if (printNConst) {
+        std::cout << "NUMBERS:" << std::endl;
+        for (const auto& num : uniqueNumbers) {
+            std::cout << num << std::endl;
+        }
+    }
+
+    if (printBConst) {
+        std::cout << "BOOLEANS:" << std::endl;
+        for (const auto& boolean : uniqueBooleans) {
+            std::cout << boolean << std::endl;
+        }
+    }
+
+    if (printSConst) {
+        for (const auto& str : uniqueStrings) {
+            std::cout << "SCONST: " << "\"" << str << "\"" << std::endl;
+        }
+    }
+    //if last token was an ERR, mainly for formatting
+    if (token.GetToken() == Token::ERR) {
+            std::cout << "Error in line " << token.GetLinenum() << ": Unrecognized Lexeme " << "{" << token.GetLexeme() << "}" << std::endl;
+        }
+    
 
     inputFile.close();
     return 0;
