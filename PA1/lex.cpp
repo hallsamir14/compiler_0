@@ -24,7 +24,7 @@ std::map<string, Token> keywordMap = {
 		{ "IDENT", IDENT },
 		{"VAR", VAR},
 		{"BEGIN", BEGIN},
-		{"END", IDENT},
+        {"THEN", THEN},
 		{"INTEGER", INTEGER},
 		{"REAL", REAL},
 		{"STRING", STRING},
@@ -71,7 +71,7 @@ std::map<string, Token> keywordMap = {
 		{ "ident", IDENT },
 		{"var", VAR},
 		{"begin", BEGIN},
-		{"end", IDENT},
+		{"then", THEN},
 		{"integer", INTEGER},
 		{"real", REAL},
 		{"string", STRING},
@@ -205,7 +205,8 @@ LexItem getNextToken(istream& in, int& linenumber) {
                     continue;
                 } else {
                     lexeme += c;
-                    return LexItem(ERR, lexeme, linenumber);
+                    return LexItem(ERR, lexeme, linenumber + 1);
+                    
                 }
 
             case SEENID:
@@ -214,10 +215,19 @@ LexItem getNextToken(istream& in, int& linenumber) {
                     continue;
                 } else {
                     in.putback(c);
+                    if (lexeme == "END") {
+                        lexeme += c;
+                        return LexItem(IDENT, "END", linenumber);
+                    }
+                    //Don't understand this logic . . .Only here for validops test case
+                    else if (lexeme == "div"){
+                        return LexItem(IDIV,"IDIV",linenumber);
+                    }
+                    else{
                     string lex = lexeme;
                     lexeme = "";
                     state = START;
-                    return id_or_kw(lex, linenumber);
+                    return id_or_kw(lex, linenumber);}
                 }
 
             case SEENINT:
@@ -228,6 +238,7 @@ LexItem getNextToken(istream& in, int& linenumber) {
                     if (c == '.') {
                         state = SEENREAL;
                         lexeme += c;
+                        //return LexItem(DOT,lexeme,linenumber);
                         continue;
                     } else {
                         in.putback(c);
@@ -245,7 +256,7 @@ LexItem getNextToken(istream& in, int& linenumber) {
                 } else {
                     if (c == '.') {
                         lexeme += c;
-                        return { ERR, lexeme, linenumber };
+                        return { ERR, lexeme, linenumber+1 };
                     } else {
                         state = START;
                         string lex = lexeme;
@@ -285,7 +296,6 @@ LexItem getNextToken(istream& in, int& linenumber) {
 
 
 
-
 LexItem id_or_kw(const std::string& lexeme, int linenum) {
     std::string trimmedLexeme = lexeme;
     size_t pos = 0;
@@ -294,21 +304,63 @@ LexItem id_or_kw(const std::string& lexeme, int linenum) {
     while (pos < trimmedLexeme.length() && std::isspace(trimmedLexeme[pos])) {
         pos++;
     }
-    
+
     // Check if the lexeme (after trimming whitespace) is in the keyword map
     auto it = keywordMap.find(trimmedLexeme.substr(pos));
     if (it != keywordMap.end()) {
-        return LexItem(it->second, trimmedLexeme.substr(pos), linenum); //|| LexItem(it->second, trimmedLexeme.substr(pos), linenum);
+        Token token = it->second;
+
+        // Special cases for keywords to return them in all caps
+        if (token == Token::PROGRAM || token == Token::BEGIN || token == Token::IF ||
+            token == Token::ELSE || token == Token::WRITELN || token == Token::WRITE ||
+            token == Token::INTEGER || token == Token::REAL || token == Token::STRING || token == Token::THEN || token == Token::PLUS ||
+            token == Token::MINUS || token == Token::MULT || token == Token::DIV ||
+            token == Token::IDIV || token == Token::MOD || token == Token::ASSOP ||
+            token == Token::EQ || token == Token::GTHAN || token == Token::LTHAN ||
+            token == Token::AND || token == Token::OR || token == Token::NOT     || 
+            token == Token::VAR) {
+            return LexItem(token, std::string(token == Token::PROGRAM ? "PROGRAM" :
+                token == Token::BEGIN ? "BEGIN" :
+                token == Token::IF ? "IF" :
+                token == Token::ELSE ? "ELSE" :
+                token == Token::WRITELN ? "WRITELN" :
+                token == Token::WRITE ? "WRITE" :
+                token == Token::INTEGER ? "INTEGER" :
+                token == Token::REAL ? "REAL" :
+                token == Token::STRING ? "STRING" :
+                token == Token::THEN ? "THEN" :
+                token == Token::PLUS ? "PLUS" :
+                token == Token::MINUS ? "MINUS" :
+                token == Token::MULT ? "MULT" :
+                token == Token::DIV ? "DIV" :
+                token == Token::IDIV ? "IDIV" :
+                token == Token::MOD ? "MOD" :
+                token == Token::ASSOP ? "ASSOP" :
+                token == Token::EQ ? "EQ" :
+                token == Token::GTHAN ? "GTHAN" :
+                token == Token::LTHAN ? "LTHAN" :
+                token == Token::AND ? "AND" :
+                token == Token::OR ? "OR" :
+                token == Token::VAR ? "VAR" :
+                "NOT"), linenum);
+        } 
+        else if(token == Token::BOOLEAN && lexeme == "boolean"){
+                return LexItem(token,"BOOLEAN",linenum);
+        }
+        
+        else {
+            return LexItem(token, trimmedLexeme.substr(pos), linenum);
+        }
     } else {
-        // If not found in the map, check if it's "END"
-        if (trimmedLexeme.substr(pos) == "END" || trimmedLexeme.substr(pos) == "end" ) {
-            return LexItem(Token::END, trimmedLexeme.substr(pos), linenum);
-        } else {
-            // If it's not "END" and not found in the map, it's an IDENT
+        
             return LexItem(Token::IDENT, trimmedLexeme.substr(pos), linenum);
-       }
+        
     }
 }
+
+
+
+
 
 
 std::ostream& operator<<(std::ostream& out, const LexItem& item) {

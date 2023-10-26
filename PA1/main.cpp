@@ -26,11 +26,12 @@ int main(int argc, char* argv[]) {
             if (arg == "-v") {
                 printTokens = true;
                 validArgumentFound = true;
-                printSummary = false;
+                printSummary = true;
             } else if (arg == "-nconst") {
                 printNConst = true;
                 validArgumentFound = true;
-                printSummary = false; // Don't print summary if flags are present
+                //printSummary = false;
+
             } else if (arg == "-sconst") {
                 printSConst = true;
                 validArgumentFound = true;
@@ -38,11 +39,11 @@ int main(int argc, char* argv[]) {
             } else if (arg == "-bconst") {
                 printBConst = true;
                 validArgumentFound = true;
-                printSummary = false;
+                //printSummary = false;
             } else if (arg == "-ident") {
                 printIdent = true;
                 validArgumentFound = true;
-                printSummary = false;
+                //printSummary = false;
             } else {
                 std::cout << "UNRECOGNIZED FLAG " << "{"<< arg << "}" << std::endl;
                 return 1;
@@ -58,16 +59,16 @@ int main(int argc, char* argv[]) {
             }
         }
     }
-
+        if (filename.empty()) {
+        std::cout << "NO SPECIFIED INPUT FILE." << std::endl;
+        return 1;
+    }
     if (!validArgumentFound) {
         std::cout << "No valid argument found." << std::endl;
         return 1;
     }
 
-    if (filename.empty()) {
-        std::cout << "A filename is required." << std::endl;
-        return 1;
-    }
+
 
     // Open the input file
     std::ifstream inputFile(filename);
@@ -83,6 +84,7 @@ int main(int argc, char* argv[]) {
     std::set<std::string> uniqueBooleans;
     std::set<std::string> uniqueIdentifiers;
 
+
     int lineCount = 0; // Initialize the line number
     LexItem token;
 
@@ -91,45 +93,75 @@ int main(int argc, char* argv[]) {
         if (token.GetToken() == Token::ERR) {
             break;
         }
-
+        
+        //print all tokens for all tokens flag
         if (printTokens) {
             if (token.GetToken() == Token::IDENT){
                
                 std::cout << "IDENT: \"" << token.GetLexeme() << "\"" <<endl;
             }
+            else if(token.GetToken() == Token::ICONST){
+                std::cout << "ICONST: \"" << token.GetLexeme() << "\"" <<endl;
+            }
+            else if(token.GetToken() == Token::RCONST){
+                std::cout << "RCONST: \"" << token.GetLexeme() << "\"" <<endl;
+            }
+            else if(token.GetToken() == Token::SCONST){
+                std::cout << "SCONST: \"" << token.GetLexeme() << "\"" <<endl;
+            }
+            else if(token.GetToken() == Token::BOOLEAN && (token.GetLexeme() == "true" || token.GetLexeme() == "false")){
+                std::cout << "BCONST: \"" << token.GetLexeme() << "\"" <<endl;
+            }
             else{
                 std::cout << token.GetLexeme() <<endl;
             }
         }
-
+        
+        
+    
         if (token.GetToken() == Token::IDENT) {
             uniqueIdentifiers.insert(token.GetLexeme());
-        } else if (token.GetToken() == Token::ICONST || token.GetToken() == Token::RCONST) {
+        } 
+        else if (token.GetToken() == Token::ICONST) {
             uniqueNumbers.insert(std::stod(token.GetLexeme()));
-        } else if (token.GetToken() == Token::SCONST) {
+        }
+        else if (token.GetToken() == Token::RCONST){
+            uniqueNumbers.insert(std::stod(token.GetLexeme()));  
+        }
+        else if (token.GetToken() == Token::SCONST) {
             uniqueStrings.insert(token.GetLexeme());
-        } else if (token.GetToken() == Token::BOOLEAN) {
-            uniqueBooleans.insert(token.GetLexeme());
+        } 
+        //only count and print boolean tokens with "true" or "false" lexeme value
+        else if (token.GetToken() == Token::BOOLEAN) {
+            if (token.GetLexeme() == "true" || token.GetLexeme() == "false") {
+                uniqueBooleans.insert(token.GetLexeme());}
         }
 
         tokens.push_back(token);
     }
+        //if last token was an ERR
+    if (token.GetToken() == Token::ERR) {
+          
+                std::cout << "Error in line " << token.GetLinenum() << ": Unrecognized Lexeme " << "{" << token.GetLexeme() << "}" << std::endl;
+                return 0;
+            }
 
-    if (tokens.empty()) {
-        cout << "Empty File." << endl;
-        return 0;
+        if (tokens.empty()) {
+            cout << "Empty File." << endl;
+            return 0;
     }
 
-    // Print summary information if the flag is set
     if (printSummary) {
         std::cout << endl << "Lines: " << lineCount << std::endl;
         std::cout << "Total Tokens: " << tokens.size() << std::endl;
         std::cout << "Identifiers: " << uniqueIdentifiers.size() << std::endl;
         std::cout << "Numbers: " << uniqueNumbers.size() << std::endl;
+    
 
         std::cout << "Booleans: ";
         if (uniqueBooleans.size() > 0) {
-            cout << uniqueBooleans.size() - 1 << std::endl;
+
+            cout << uniqueBooleans.size() << std::endl;
         } else {
             cout << 0 << endl;
         }
@@ -137,9 +169,11 @@ int main(int argc, char* argv[]) {
         std::cout << "Strings: " << uniqueStrings.size() << std::endl;
     }
 
+    
+
     // Process and print additional data based on flags
     if (printIdent) {
-    std::cout << "IDENTIFIERS: ";
+    std::cout << "IDENTIFIERS:" << endl;
     auto it = uniqueIdentifiers.begin();
     auto last = uniqueIdentifiers.end();
     for (; it != last; ++it) {
@@ -156,6 +190,8 @@ int main(int argc, char* argv[]) {
         for (const auto& num : uniqueNumbers) {
             std::cout << num << std::endl;
         }
+
+
     }
 
     if (printBConst) {
@@ -166,14 +202,11 @@ int main(int argc, char* argv[]) {
     }
 
     if (printSConst) {
+        std::cout << "STRINGS:" << std::endl;
         for (const auto& str : uniqueStrings) {
-            std::cout << "SCONST: " << "\"" << str << "\"" << std::endl;
+            std::cout << "\"" << str << "\"" << std::endl;
         }
     }
-    //if last token was an ERR, mainly for formatting
-    if (token.GetToken() == Token::ERR) {
-            std::cout << "Error in line " << token.GetLinenum() << ": Unrecognized Lexeme " << "{" << token.GetLexeme() << "}" << std::endl;
-        }
     
 
     inputFile.close();
