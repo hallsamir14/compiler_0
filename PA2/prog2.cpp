@@ -7,9 +7,9 @@
 #include <iostream>
 #include <fstream>
 
-//#include "lex.h"
+#include "lex.cpp"
 #include "parser.h"
-//#include "parser.cpp"
+#include "parser.cpp"
 
 
 using namespace std;
