@@ -14,7 +14,7 @@ using namespace std;
 #include "lex.h"
 
 
-
+//foward declaration
 extern bool Prog(istream& in, int& line);
 extern bool DeclPart(istream& in, int& line);
 extern bool DeclStmt(istream& in, int& line);
@@ -36,5 +36,7 @@ extern bool Term(istream& in, int& line);
 extern bool SFactor(istream& in, int& line);
 extern bool Factor(istream& in, int& line, int sign);
 extern int ErrCount();
+extern bool LogOrExpr(istream& in, int& line);
+extern bool Type(istream& in, int& line);
 
 #endif /* PARSE_H_ */
